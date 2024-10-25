@@ -60,9 +60,9 @@ jobs:
           macos: 'gotest/test-macos.7z'
           win-x64: 'gotest/test-winx64.7z'
           win-arm64: 'gotest/test-winarm64.7z'
-          jenkins-url: ${{ secrets.JENKINS_URL }}
-          jenkins-username: ${{ secrets.JENKINS_USERNAME }}
-          jenkins-token: ${{ secrets.JENKINS_TOKEN }}
+          jenkins-url: '${{ secrets.JENKINS_URL }}'
+          jenkins-username: '${{ secrets.JENKINS_USERNAME }}'
+          jenkins-token: '${{ secrets.JENKINS_TOKEN }}'
 
       - name: Print Output
         id: output
