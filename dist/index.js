@@ -29173,7 +29173,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = run;
 const core = __importStar(__nccwpck_require__(7484));
-//import { wait } from './wait'
+const wait_1 = __nccwpck_require__(910);
 const axios_1 = __importDefault(__nccwpck_require__(7269));
 const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
@@ -29234,17 +29234,22 @@ async function run() {
         if (!triggerResult.headers.location) {
             throw new Error(`Failed to get location of Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
         }
-        // Give the server time to process the request
-        //await wait(1000)
         core.debug(`New Item at: ${triggerResult.headers.location}`);
-        const checkResult = await (0, axios_1.default)({
-            method: 'get',
-            url: `${triggerResult.headers.location}api/json`,
-            headers: {
-                Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
-            }
-        });
-        core.debug(`Check Result: ${(0, util_1.inspect)(checkResult)}`);
+        // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+        const check = async () => {
+            return await (0, axios_1.default)({
+                method: 'get',
+                url: `${triggerResult.headers.location}api/json`,
+                headers: {
+                    Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
+                }
+            });
+        };
+        for (let i = 0; i < 10; i++) {
+            const checkResult = await check();
+            core.debug(`Check Result (${i}): ${(0, util_1.inspect)(checkResult)}`);
+            await (0, wait_1.wait)(1000);
+        }
         // Set outputs for other workflow steps to use
         core.setOutput('macos', '');
         core.setOutput('win-x64', '');
@@ -29255,6 +29260,30 @@ async function run() {
         if (error instanceof Error)
             core.setFailed(error.message);
     }
+}
+
+
+/***/ }),
+
+/***/ 910:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.wait = wait;
+/**
+ * Wait for a number of milliseconds.
+ * @param milliseconds The number of milliseconds to wait.
+ * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
+ */
+async function wait(milliseconds) {
+    return new Promise(resolve => {
+        if (isNaN(milliseconds)) {
+            throw new Error('milliseconds not a number');
+        }
+        setTimeout(() => resolve('done!'), milliseconds);
+    });
 }
 
 

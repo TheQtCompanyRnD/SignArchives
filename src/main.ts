@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 
-//import { wait } from './wait'
+import { wait } from './wait'
 import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'
@@ -74,20 +74,24 @@ export async function run(): Promise<void> {
       )
     }
 
-    // Give the server time to process the request
-    //await wait(1000)
-
     core.debug(`New Item at: ${triggerResult.headers.location}`)
 
-    const checkResult = await axios({
-      method: 'get',
-      url: `${triggerResult.headers.location}api/json`,
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
-      }
-    })
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+    const check = async () => {
+      return await axios({
+        method: 'get',
+        url: `${triggerResult.headers.location}api/json`,
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
+        }
+      })
+    }
 
-    core.debug(`Check Result: ${inspect(checkResult)}`)
+    for (let i = 0; i < 10; i++) {
+      const checkResult = await check()
+      core.debug(`Check Result (${i}): ${inspect(checkResult)}`)
+      await wait(1000)
+    }
 
     // Set outputs for other workflow steps to use
     core.setOutput('macos', '')

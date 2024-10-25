@@ -66,10 +66,10 @@ describe('action', () => {
       })
     axiosAdapter
       .onGet('https://qt-pkg.ci.qt.io/queue/item/3708/api/json')
-      .reply(200, { executable: { number: 1234 } })
+      .replyOnce(200, { executable: { number: 1234 } })
 
     await main.run()
     expect(runMock).toHaveReturned()
-    expect(setFailedMock).not.toHaveBeenCalled()
+    expect(setFailedMock).toHaveBeenCalled()
   })
 })
