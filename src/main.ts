@@ -56,6 +56,8 @@ export async function run(): Promise<void> {
       data: form
     }
 
+    core.debug(`Request: ${JSON.stringify(config)}`)
+
     const triggerResult = await axios(config)
     core.debug(`Response: ${JSON.stringify(triggerResult.data)}`)
 

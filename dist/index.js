@@ -29221,6 +29221,7 @@ async function run() {
             },
             data: form
         };
+        core.debug(`Request: ${JSON.stringify(config)}`);
         const triggerResult = await (0, axios_1.default)(config);
         core.debug(`Response: ${JSON.stringify(triggerResult.data)}`);
         // Set outputs for other workflow steps to use

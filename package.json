@@ -68,7 +68,8 @@
   },
   "dependencies": {
     "@actions/core": "^1.11.1",
-    "axios": "^1.7.7"
+    "axios": "^1.7.7",
+    "axios-mock-adapter": "^2.1.0"
   },
   "devDependencies": {
     "@github/local-action": "^2.1.2",
