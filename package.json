@@ -1,16 +1,16 @@
 {
-  "name": "typescript-action",
-  "description": "GitHub Actions TypeScript template",
+  "name": "sign-archives",
+  "description": "Qt Company internal action to sign archives",
   "version": "0.0.0",
   "author": "",
   "private": true,
-  "homepage": "https://github.com/actions/typescript-action",
+  "homepage": "https://github.com/TheQtCompanyRnD/SignArchives",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/TheQtCompanyRnD/SignArchives.git"
   },
   "bugs": {
-    "url": "https://github.com/actions/typescript-action/issues"
+    "url": "https://github.com/TheQtCompanyRnD/SignArchives/issues"
   },
   "keywords": [
     "actions",
@@ -67,7 +67,8 @@
     ]
   },
   "dependencies": {
-    "@actions/core": "^1.11.1"
+    "@actions/core": "^1.11.1",
+    "axios": "^1.7.7"
   },
   "devDependencies": {
     "@github/local-action": "^2.1.2",

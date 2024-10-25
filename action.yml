@@ -1,23 +1,47 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'SignArchives'
+description: 'Signs the archives'
+author: 'Marcus Tillmanns'
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
   icon: 'heart'
-  color: 'red'
+  color: 'green'
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  macos:
+    description: 'Path to macos archive'
+    required: false
+    default: ''
+  win-x64:
+    description: 'Path to Windows x64 archive'
+    required: false
+    default: ''
+  win-arm64:
+    description: 'Path to Windows arm64 archive'
+    required: false
+    default: ''
+  jenkins-url:
+    description: Url to jenkins
     required: true
-    default: '1000'
+    default: ''
+  jenkins-username:
+    description: 'Username for jenkins'
+    required: true
+    default: ''
+  jenkins-token:
+    description: 'API Token for jenkins'
+    required: true
+    default: ''
 
 # Define your outputs here.
 outputs:
-  time:
-    description: 'Your output description here'
+  macos:
+    description: 'Path to signed archive for macos'
+  win-x64:
+    description: 'Path to signed archive for windows x64'
+  win-arm64:
+    description: 'Path to signed archive for windows arm64'
 
 runs:
   using: node20
