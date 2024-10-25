@@ -25,7 +25,7 @@ inputs:
     description: Url to jenkins
     required: true
     default: ''
-  jenkins-username:
+  jenkins-user:
     description: 'Username for jenkins'
     required: true
     default: ''
