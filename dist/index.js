@@ -29173,6 +29173,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = run;
 const core = __importStar(__nccwpck_require__(7484));
+//import { wait } from './wait'
 const axios_1 = __importDefault(__nccwpck_require__(7269));
 const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
@@ -29226,7 +29227,23 @@ async function run() {
             data: form
         };
         const triggerResult = await (0, axios_1.default)(config);
-        core.debug(`Response: ${JSON.stringify(triggerResult.data)}`);
+        if (triggerResult.status !== 201) {
+            throw new Error(`Failed to trigger Jenkins job: ${JSON.stringify(triggerResult)}`);
+        }
+        if (!triggerResult.headers.Location) {
+            throw new Error(`Failed to get location of Jenkins job: ${JSON.stringify(triggerResult)}`);
+        }
+        // Give the server time to process the request
+        //await wait(1000)
+        core.debug(`New Item at: ${triggerResult.headers.Location}`);
+        const checkResult = await (0, axios_1.default)({
+            method: 'get',
+            url: `${triggerResult.headers.Location}api/json`,
+            headers: {
+                Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
+            }
+        });
+        core.debug(`Check Result: ${JSON.stringify(checkResult)}`);
         // Set outputs for other workflow steps to use
         core.setOutput('macos', '');
         core.setOutput('win-x64', '');

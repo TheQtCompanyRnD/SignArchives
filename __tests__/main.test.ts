@@ -58,8 +58,15 @@ describe('action', () => {
           'https://ci.com/job/Sign_archive/buildWithParameters'
         )
         expect(config.headers?.Authorization).toBe('Basic dXNlcm5hbWU6MTIzNA==')
-        return [201, { data: 'success' }]
+        return [
+          201,
+          '',
+          { Location: 'https://qt-pkg.ci.qt.io/queue/item/3708/' }
+        ]
       })
+    axiosAdapter
+      .onGet('https://qt-pkg.ci.qt.io/queue/item/3708/api/json')
+      .reply(200, { executable: { number: 1234 } })
 
     await main.run()
     expect(runMock).toHaveReturned()

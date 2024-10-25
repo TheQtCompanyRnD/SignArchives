@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 
+//import { wait } from './wait'
 import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'
@@ -61,7 +62,31 @@ export async function run(): Promise<void> {
     }
 
     const triggerResult = await axios(config)
-    core.debug(`Response: ${JSON.stringify(triggerResult.data)}`)
+    if (triggerResult.status !== 201) {
+      throw new Error(
+        `Failed to trigger Jenkins job: ${JSON.stringify(triggerResult)}`
+      )
+    }
+    if (!triggerResult.headers.Location) {
+      throw new Error(
+        `Failed to get location of Jenkins job: ${JSON.stringify(triggerResult)}`
+      )
+    }
+
+    // Give the server time to process the request
+    //await wait(1000)
+
+    core.debug(`New Item at: ${triggerResult.headers.Location}`)
+
+    const checkResult = await axios({
+      method: 'get',
+      url: `${triggerResult.headers.Location}api/json`,
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
+      }
+    })
+
+    core.debug(`Check Result: ${JSON.stringify(checkResult)}`)
 
     // Set outputs for other workflow steps to use
     core.setOutput('macos', '')
