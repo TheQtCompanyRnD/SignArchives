@@ -61,7 +61,7 @@ describe('action', () => {
         return [
           201,
           '',
-          { Location: 'https://qt-pkg.ci.qt.io/queue/item/3708/' }
+          { location: 'https://qt-pkg.ci.qt.io/queue/item/3708/' }
         ]
       })
     axiosAdapter

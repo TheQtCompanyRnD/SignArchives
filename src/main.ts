@@ -68,7 +68,7 @@ export async function run(): Promise<void> {
         `Failed to trigger Jenkins job: ${inspect(triggerResult)}`
       )
     }
-    if (!triggerResult.headers.Location) {
+    if (!triggerResult.headers.location) {
       throw new Error(
         `Failed to get location of Jenkins job: ${inspect(triggerResult)}`
       )
@@ -77,11 +77,11 @@ export async function run(): Promise<void> {
     // Give the server time to process the request
     //await wait(1000)
 
-    core.debug(`New Item at: ${triggerResult.headers.Location}`)
+    core.debug(`New Item at: ${triggerResult.headers.location}`)
 
     const checkResult = await axios({
       method: 'get',
-      url: `${triggerResult.headers.Location}api/json`,
+      url: `${triggerResult.headers.location}api/json`,
       headers: {
         Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
       }

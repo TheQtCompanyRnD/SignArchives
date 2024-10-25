@@ -29231,15 +29231,15 @@ async function run() {
         if (triggerResult.status !== 201) {
             throw new Error(`Failed to trigger Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
         }
-        if (!triggerResult.headers.Location) {
+        if (!triggerResult.headers.location) {
             throw new Error(`Failed to get location of Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
         }
         // Give the server time to process the request
         //await wait(1000)
-        core.debug(`New Item at: ${triggerResult.headers.Location}`);
+        core.debug(`New Item at: ${triggerResult.headers.location}`);
         const checkResult = await (0, axios_1.default)({
             method: 'get',
-            url: `${triggerResult.headers.Location}api/json`,
+            url: `${triggerResult.headers.location}api/json`,
             headers: {
                 Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
             }
