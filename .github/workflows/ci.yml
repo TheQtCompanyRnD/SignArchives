@@ -46,7 +46,7 @@ jobs:
 
   test-action:
     name: GitHub Actions Test
-    runs-on: ubuntu-latest
+    runs-on: signing-runner
 
     steps:
       - name: Checkout
@@ -57,8 +57,13 @@ jobs:
         id: test-action
         uses: ./
         with:
-          milliseconds: 2000
+          macos: 'gotest/test-macos.7z'
+          win-x64: 'gotest/test-winx64.7z'
+          win-arm64: 'gotest/test-winarm64.7z'
+          jenkins-url: ${{ secrets.JENKINS_URL }}
+          jenkins-username: ${{ secrets.JENKINS_USERNAME }}
+          jenkins-token: ${{ secrets.JENKINS_TOKEN }}
 
       - name: Print Output
         id: output
-        run: echo "${{ steps.test-action.outputs.time }}"
+        run: echo "${{ steps.test-action.outputs.macos }}"
