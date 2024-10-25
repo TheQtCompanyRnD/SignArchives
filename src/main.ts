@@ -87,9 +87,22 @@ export async function run(): Promise<void> {
       })
     }
 
-    for (let i = 0; i < 10; i++) {
+    core.info(`Waiting for job to start ...`)
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
       const checkResult = await check()
-      core.debug(`Check Result (${i}): ${inspect(checkResult)}`)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (checkResult.data.executable) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        core.info(`Job started: ${checkResult.data.executable.url}`)
+        break
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (checkResult.data.cancelled) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        throw new Error(`Job was cancelled: ${inspect(checkResult)}`)
+      }
+
       await wait(1000)
     }
 

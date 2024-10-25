@@ -58,18 +58,25 @@ describe('action', () => {
           'https://ci.com/job/Sign_archive/buildWithParameters'
         )
         expect(config.headers?.Authorization).toBe('Basic dXNlcm5hbWU6MTIzNA==')
-        return [
-          201,
-          '',
-          { location: 'https://qt-pkg.ci.qt.io/queue/item/3708/' }
-        ]
+        return [201, '', { location: 'https://ci.com/queue/item/3708/' }]
       })
     axiosAdapter
-      .onGet('https://qt-pkg.ci.qt.io/queue/item/3708/api/json')
-      .replyOnce(200, { executable: { number: 1234 } })
+      .onGet('https://ci.com/queue/item/3708/api/json')
+      .replyOnce(200, { why: 'Waiting ...' })
+    axiosAdapter
+      .onGet('https://ci.com/queue/item/3708/api/json')
+      .replyOnce(200, {
+        executable: {
+          number: 42,
+          url: 'https://ci.com/job/Sign_archive/42/'
+        }
+      })
+    axiosAdapter
+      .onGet('https://ci.com/queue/item/3708/api/json')
+      .replyOnce(200, { cancelled: true })
 
     await main.run()
     expect(runMock).toHaveReturned()
-    expect(setFailedMock).toHaveBeenCalled()
+    expect(setFailedMock).not.toHaveBeenCalled()
   })
 })

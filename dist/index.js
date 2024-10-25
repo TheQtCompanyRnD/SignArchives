@@ -29245,9 +29245,21 @@ async function run() {
                 }
             });
         };
-        for (let i = 0; i < 10; i++) {
+        core.info(`Waiting for job to start ...`);
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
             const checkResult = await check();
-            core.debug(`Check Result (${i}): ${(0, util_1.inspect)(checkResult)}`);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (checkResult.data.executable) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                core.info(`Job started: ${checkResult.data.executable.url}`);
+                break;
+            }
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (checkResult.data.cancelled) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                throw new Error(`Job was cancelled: ${(0, util_1.inspect)(checkResult)}`);
+            }
             await (0, wait_1.wait)(1000);
         }
         // Set outputs for other workflow steps to use
