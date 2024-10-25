@@ -29190,12 +29190,16 @@ async function run() {
         const jenkinsToken = core.getInput('jenkins-token');
         const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters`;
         const inputFiles = [
-            { name: 'input_mac_7z', file: mac_in, paramName: 'macos' },
-            { name: 'input_windows_x64_7z', file: win_x64_in, paramName: 'winx64' },
+            { name: 'input_mac_7z', file: mac_in, paramName: 'input_mac_7z' },
+            {
+                name: 'input_windows_x64_7z',
+                file: win_x64_in,
+                paramName: 'input_windows_x64_7z'
+            },
             {
                 name: 'input_windows_arm64_7z',
                 file: win_arm64_in,
-                paramName: 'winarm64'
+                paramName: 'input_windows_arm64_7z'
             }
         ].filter(file => file.file);
         const form = new form_data_1.default();
@@ -29212,7 +29216,6 @@ async function run() {
         core.debug(`Sending request ...`);
         core.debug(`Parameters: ${JSON.stringify(params)}`);
         core.debug(`Files: ${inputFiles.map(file => file.file).join(', ')}`);
-        core.warning(`This is a warning message: ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`);
         const config = {
             method: 'post',
             url: triggerUrl,
@@ -29222,7 +29225,6 @@ async function run() {
             },
             data: form
         };
-        core.debug(`Request: ${JSON.stringify(config)}`);
         const triggerResult = await (0, axios_1.default)(config);
         core.debug(`Response: ${JSON.stringify(triggerResult.data)}`);
         // Set outputs for other workflow steps to use
