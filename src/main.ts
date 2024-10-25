@@ -4,6 +4,7 @@ import * as core from '@actions/core'
 import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'
+import { inspect } from 'util' // or directly
 
 /**
  * The main function for the action.
@@ -48,7 +49,7 @@ export async function run(): Promise<void> {
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug(`Sending request ...`)
-    core.debug(`Parameters: ${JSON.stringify(params)}`)
+    core.debug(`Parameters: ${inspect(params)}`)
     core.debug(`Files: ${inputFiles.map(file => file.file).join(', ')}`)
 
     const config = {
@@ -64,12 +65,12 @@ export async function run(): Promise<void> {
     const triggerResult = await axios(config)
     if (triggerResult.status !== 201) {
       throw new Error(
-        `Failed to trigger Jenkins job: ${JSON.stringify(triggerResult)}`
+        `Failed to trigger Jenkins job: ${inspect(triggerResult)}`
       )
     }
     if (!triggerResult.headers.Location) {
       throw new Error(
-        `Failed to get location of Jenkins job: ${JSON.stringify(triggerResult)}`
+        `Failed to get location of Jenkins job: ${inspect(triggerResult)}`
       )
     }
 
@@ -86,7 +87,7 @@ export async function run(): Promise<void> {
       }
     })
 
-    core.debug(`Check Result: ${JSON.stringify(checkResult)}`)
+    core.debug(`Check Result: ${inspect(checkResult)}`)
 
     // Set outputs for other workflow steps to use
     core.setOutput('macos', '')

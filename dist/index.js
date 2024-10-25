@@ -29177,6 +29177,7 @@ const core = __importStar(__nccwpck_require__(7484));
 const axios_1 = __importDefault(__nccwpck_require__(7269));
 const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
+const util_1 = __nccwpck_require__(9023); // or directly
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -29215,7 +29216,7 @@ async function run() {
         form.append('json', JSON.stringify(params));
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         core.debug(`Sending request ...`);
-        core.debug(`Parameters: ${JSON.stringify(params)}`);
+        core.debug(`Parameters: ${(0, util_1.inspect)(params)}`);
         core.debug(`Files: ${inputFiles.map(file => file.file).join(', ')}`);
         const config = {
             method: 'post',
@@ -29228,10 +29229,10 @@ async function run() {
         };
         const triggerResult = await (0, axios_1.default)(config);
         if (triggerResult.status !== 201) {
-            throw new Error(`Failed to trigger Jenkins job: ${JSON.stringify(triggerResult)}`);
+            throw new Error(`Failed to trigger Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
         }
         if (!triggerResult.headers.Location) {
-            throw new Error(`Failed to get location of Jenkins job: ${JSON.stringify(triggerResult)}`);
+            throw new Error(`Failed to get location of Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
         }
         // Give the server time to process the request
         //await wait(1000)
@@ -29243,7 +29244,7 @@ async function run() {
                 Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
             }
         });
-        core.debug(`Check Result: ${JSON.stringify(checkResult)}`);
+        core.debug(`Check Result: ${(0, util_1.inspect)(checkResult)}`);
         // Set outputs for other workflow steps to use
         core.setOutput('macos', '');
         core.setOutput('win-x64', '');
