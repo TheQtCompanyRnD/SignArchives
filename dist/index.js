@@ -29188,7 +29188,7 @@ async function run() {
         const jenkinsUrl = core.getInput('jenkins-url');
         const jenkinsUser = core.getInput('jenkins-user');
         const jenkinsToken = core.getInput('jenkins-token');
-        const triggerUrl = `${jenkinsUrl}/job/Sign_archive/build`;
+        const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters`;
         const inputFiles = [
             { name: 'input_mac_7z', file: mac_in, paramName: 'macos' },
             { name: 'input_windows_x64_7z', file: win_x64_in, paramName: 'winx64' },

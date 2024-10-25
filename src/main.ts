@@ -17,7 +17,7 @@ export async function run(): Promise<void> {
     const jenkinsUser: string = core.getInput('jenkins-user')
     const jenkinsToken: string = core.getInput('jenkins-token')
 
-    const triggerUrl = `${jenkinsUrl}/job/Sign_archive/build`
+    const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters`
 
     const inputFiles = [
       { name: 'input_mac_7z', file: mac_in, paramName: 'macos' },
