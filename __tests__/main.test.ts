@@ -97,11 +97,24 @@ describe('action', () => {
       })
     axiosAdapter
       .onGet('https://ci.com/job/Sign_archive/42/api/json')
-      .replyOnce(200, {
+      .reply(200, {
         building: false,
         inProgress: false,
         result: 'SUCCESS',
-        runs: []
+        runs: [
+          {
+            url: 'https://ci.com/job/Sign_archive/cfg=macOS-clang-14-arm64/42/'
+          }
+        ]
+      })
+    axiosAdapter
+      .onGet(
+        'https://ci.com/job/Sign_archive/cfg=macOS-clang-14-arm64/42/api/json'
+      )
+      .replyOnce(200, {
+        building: false,
+        inProgress: false,
+        result: 'SUCCESS'
       })
 
     await main.run()

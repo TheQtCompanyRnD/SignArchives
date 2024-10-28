@@ -29178,66 +29178,53 @@ const axios_1 = __importDefault(__nccwpck_require__(7269));
 const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
 const util_1 = __nccwpck_require__(9023); // or directly
-async function waitForJobFinished(jobUrl, auth) {
-    async function checkJob() {
-        return (await (0, axios_1.default)({
-            method: 'get',
-            url: `${jobUrl}api/json`,
-            headers: {
-                Authorization: auth
+async function fetchJob(jobUrl, auth) {
+    return (await (0, axios_1.default)({
+        method: 'get',
+        url: `${jobUrl}api/json`,
+        headers: {
+            Authorization: auth
+        }
+    })).data;
+}
+async function downloadArtifacts(jobUrl, auth) {
+    const job = await fetchJob(jobUrl, auth);
+    const result = [];
+    for (const run of job.runs) {
+        const runData = await fetchJob(run.url, auth);
+        if (runData.result == 'SUCCESS' && runData.artifacts) {
+            for (const artifact of runData.artifacts) {
+                const artifactUrl = `${run.url}artifact/${artifact.relativePath}`;
+                const response = await (0, axios_1.default)({
+                    method: 'get',
+                    url: artifactUrl,
+                    headers: {
+                        Authorization: auth
+                    },
+                    responseType: 'stream'
+                });
+                const dest = fs_1.default.createWriteStream(artifact.fileName);
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+                response.data.pipe(dest);
+                await new Promise((resolve, reject) => {
+                    dest.on('finish', resolve);
+                    dest.on('error', reject);
+                });
+                core.info(`Downloaded artifact: ${dest.path}`);
+                result.push(dest.path);
             }
-        })).data;
+        }
     }
-    let mainJob = await checkJob();
+    return result;
+}
+async function waitForJobFinished(jobUrl, auth) {
+    let mainJob = await fetchJob(jobUrl, auth);
     while (mainJob.inProgress) {
         await (0, wait_1.wait)(1000);
-        mainJob = await checkJob();
+        mainJob = await fetchJob(jobUrl, auth);
     }
     core.info(`Job finished with: ${mainJob.result}`);
-    //const runs = (mainJob.data as Job).runs
-    //
-    //core.debug(`Runs: ${JSON.stringify(runs)}`)
-    //
-    //// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    //const check = async (job: string) => {
-    //  return await axios({
-    //    method: 'get',
-    //    url: `${job}api/json`,
-    //    headers: {
-    //      Authorization: auth
-    //    }
-    //  })
-    //}
-    //
-    //let runCopy = runs.slice()
-    //
-    //async function asyncFilter(
-    //  arr: Run[],
-    //  predicate: (run: Run) => Promise<boolean>
-    //): Promise<Run[]> {
-    //  const results = await Promise.all(arr.map(predicate))
-    //  return arr.filter((_v: Run, index: number) => results[index])
-    //}
-    //
-    //while (runCopy.length > 0) {
-    //  core.info(`Waiting for ${runCopy.length} jobs to finish ...`)
-    //  runCopy = await asyncFilter(runCopy, async (run: Run) => {
-    //    const checkResult = await check(run.url)
-    //    const jobData = checkResult.data as MatrixRun
-    //    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    //    if (jobData.building) {
-    //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    //      core.info(`Job still building: ${checkResult.data.fullDisplayName}`)
-    //      return true
-    //    } else {
-    //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    //      core.info(`Job finished: ${checkResult.data.fullDisplayName}`)
-    //      return false
-    //    }
-    //  })
-    //
-    //  await wait(1000)
-    //}
+    return mainJob.result == 'SUCCESS';
 }
 async function waitForStarted(queueLocation, auth) {
     // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -29330,15 +29317,21 @@ async function run() {
         core.info('Waiting for job to start ...');
         const jobUrl = await waitForStarted(triggerResult.headers.location, auth);
         core.info(`Waiting for job to finish ...`);
-        await waitForJobFinished(jobUrl, auth);
+        const success = await waitForJobFinished(jobUrl, auth);
+        if (!success) {
+            throw new Error(`Job failed: ${jobUrl}`);
+        }
+        const aritfacts = await downloadArtifacts(jobUrl, auth);
+        core.debug(`Artifacts: ${aritfacts.join(', ')}`);
         // Set outputs for other workflow steps to use
-        core.setOutput('macos', '');
-        core.setOutput('win-x64', '');
-        core.setOutput('win-arm64', '');
+        core.setOutput('macos', aritfacts.find(file => file.endsWith('output_mac_7z')) ?? '');
+        core.setOutput('win-x64', aritfacts.find(file => file.endsWith('output_windows_x64_7z')) ?? '');
+        core.setOutput('win-arm64', aritfacts.find(file => file.endsWith('output_windows_arm64_7z')) ?? '');
     }
     catch (error) {
         // Fail the workflow run if an error occurs
         if (error instanceof Error) {
+            console.log(JSON.stringify(error));
             core.setFailed(error.message);
         }
     }
