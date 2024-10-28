@@ -29314,7 +29314,6 @@ async function run() {
             throw new Error(`Failed to get location of Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
         }
         core.debug(`New Item at: ${triggerResult.headers.location}`);
-        core.info('Waiting for job to start ...');
         const jobUrl = await waitForStarted(triggerResult.headers.location, auth);
         core.info(`Waiting for job to finish ...`);
         const success = await waitForJobFinished(jobUrl, auth);

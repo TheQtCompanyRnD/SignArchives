@@ -66,4 +66,4 @@ jobs:
 
       - name: Print Output
         id: output
-        run: echo "${{ steps.test-action.outputs.macos }}"
+        run: ls -lach "${{ steps.test-action.outputs.macos }}"

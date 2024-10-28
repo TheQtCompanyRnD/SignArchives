@@ -178,7 +178,6 @@ export async function run(): Promise<void> {
     }
 
     core.debug(`New Item at: ${triggerResult.headers.location}`)
-    core.info('Waiting for job to start ...')
     const jobUrl = await waitForStarted(
       triggerResult.headers.location as unknown as string,
       auth
