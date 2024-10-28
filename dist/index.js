@@ -29179,49 +29179,65 @@ const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
 const util_1 = __nccwpck_require__(9023); // or directly
 async function waitForJobFinished(jobUrl, auth) {
-    const mainJob = await (0, axios_1.default)({
-        method: 'get',
-        url: `${jobUrl}api/json`,
-        headers: {
-            Authorization: auth
-        }
-    });
-    const runs = mainJob.data.runs;
-    core.debug(`Runs: ${JSON.stringify(runs)}`);
-    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    const check = async (job) => {
-        return await (0, axios_1.default)({
+    async function checkJob() {
+        return (await (0, axios_1.default)({
             method: 'get',
-            url: `${job}api/json`,
+            url: `${jobUrl}api/json`,
             headers: {
                 Authorization: auth
             }
-        });
-    };
-    let runCopy = runs.slice();
-    async function asyncFilter(arr, predicate) {
-        const results = await Promise.all(arr.map(predicate));
-        return arr.filter((_v, index) => results[index]);
+        })).data;
     }
-    while (runCopy.length > 0) {
-        core.info(`Waiting for ${runCopy.length} jobs to finish ...`);
-        runCopy = await asyncFilter(runCopy, async (run) => {
-            const checkResult = await check(run.url);
-            const jobData = checkResult.data;
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            if (jobData.building) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                core.info(`Job still building: ${checkResult.data.fullDisplayName}`);
-                return true;
-            }
-            else {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                core.info(`Job finished: ${checkResult.data.fullDisplayName}`);
-                return false;
-            }
-        });
+    let mainJob = await checkJob();
+    while (mainJob.inProgress) {
         await (0, wait_1.wait)(1000);
+        mainJob = await checkJob();
     }
+    core.info(`Job finished with: ${mainJob.result}`);
+    //const runs = (mainJob.data as Job).runs
+    //
+    //core.debug(`Runs: ${JSON.stringify(runs)}`)
+    //
+    //// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+    //const check = async (job: string) => {
+    //  return await axios({
+    //    method: 'get',
+    //    url: `${job}api/json`,
+    //    headers: {
+    //      Authorization: auth
+    //    }
+    //  })
+    //}
+    //
+    //let runCopy = runs.slice()
+    //
+    //async function asyncFilter(
+    //  arr: Run[],
+    //  predicate: (run: Run) => Promise<boolean>
+    //): Promise<Run[]> {
+    //  const results = await Promise.all(arr.map(predicate))
+    //  return arr.filter((_v: Run, index: number) => results[index])
+    //}
+    //
+    //while (runCopy.length > 0) {
+    //  core.info(`Waiting for ${runCopy.length} jobs to finish ...`)
+    //  runCopy = await asyncFilter(runCopy, async (run: Run) => {
+    //    const checkResult = await check(run.url)
+    //    const jobData = checkResult.data as MatrixRun
+    //    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    //    if (jobData.building) {
+    //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    //      core.info(`Job still building: ${checkResult.data.fullDisplayName}`)
+    //      return true
+    //    } else {
+    //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    //      core.info(`Job finished: ${checkResult.data.fullDisplayName}`)
+    //      return false
+    //    }
+    //  })
+    //
+    //  await wait(1000)
+    //}
 }
 async function waitForStarted(queueLocation, auth) {
     // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

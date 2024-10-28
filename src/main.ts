@@ -5,62 +5,74 @@ import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'
 import { inspect } from 'util' // or directly
-
-import { Job, MatrixRun, Run } from './jenkins'
+import { Job } from './jenkins'
 
 async function waitForJobFinished(jobUrl: string, auth: string): Promise<void> {
-  const mainJob = await axios({
-    method: 'get',
-    url: `${jobUrl}api/json`,
-    headers: {
-      Authorization: auth
-    }
-  })
-
-  const runs = (mainJob.data as Job).runs
-
-  core.debug(`Runs: ${JSON.stringify(runs)}`)
-
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  const check = async (job: string) => {
-    return await axios({
-      method: 'get',
-      url: `${job}api/json`,
-      headers: {
-        Authorization: auth
-      }
-    })
+  async function checkJob(): Promise<Job> {
+    return (
+      await axios({
+        method: 'get',
+        url: `${jobUrl}api/json`,
+        headers: {
+          Authorization: auth
+        }
+      })
+    ).data as Job
   }
 
-  let runCopy = runs.slice()
+  let mainJob = await checkJob()
 
-  async function asyncFilter(
-    arr: Run[],
-    predicate: (run: Run) => Promise<boolean>
-  ): Promise<Run[]> {
-    const results = await Promise.all(arr.map(predicate))
-    return arr.filter((_v: Run, index: number) => results[index])
-  }
-
-  while (runCopy.length > 0) {
-    core.info(`Waiting for ${runCopy.length} jobs to finish ...`)
-    runCopy = await asyncFilter(runCopy, async (run: Run) => {
-      const checkResult = await check(run.url)
-      const jobData = checkResult.data as MatrixRun
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (jobData.building) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        core.info(`Job still building: ${checkResult.data.fullDisplayName}`)
-        return true
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        core.info(`Job finished: ${checkResult.data.fullDisplayName}`)
-        return false
-      }
-    })
-
+  while (mainJob.inProgress) {
     await wait(1000)
+    mainJob = await checkJob()
   }
+
+  core.info(`Job finished with: ${mainJob.result}`)
+
+  //const runs = (mainJob.data as Job).runs
+  //
+  //core.debug(`Runs: ${JSON.stringify(runs)}`)
+  //
+  //// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  //const check = async (job: string) => {
+  //  return await axios({
+  //    method: 'get',
+  //    url: `${job}api/json`,
+  //    headers: {
+  //      Authorization: auth
+  //    }
+  //  })
+  //}
+  //
+  //let runCopy = runs.slice()
+  //
+  //async function asyncFilter(
+  //  arr: Run[],
+  //  predicate: (run: Run) => Promise<boolean>
+  //): Promise<Run[]> {
+  //  const results = await Promise.all(arr.map(predicate))
+  //  return arr.filter((_v: Run, index: number) => results[index])
+  //}
+  //
+  //while (runCopy.length > 0) {
+  //  core.info(`Waiting for ${runCopy.length} jobs to finish ...`)
+  //  runCopy = await asyncFilter(runCopy, async (run: Run) => {
+  //    const checkResult = await check(run.url)
+  //    const jobData = checkResult.data as MatrixRun
+  //    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  //    if (jobData.building) {
+  //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  //      core.info(`Job still building: ${checkResult.data.fullDisplayName}`)
+  //      return true
+  //    } else {
+  //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  //      core.info(`Job finished: ${checkResult.data.fullDisplayName}`)
+  //      return false
+  //    }
+  //  })
+  //
+  //  await wait(1000)
+  //}
 }
 
 async function waitForStarted(
