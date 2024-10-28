@@ -6,6 +6,100 @@ import FormData from 'form-data'
 import fs from 'fs'
 import { inspect } from 'util' // or directly
 
+import { Job, MatrixRun, Run } from './jenkins'
+
+async function waitForJobFinished(jobUrl: string, auth: string): Promise<void> {
+  const mainJob = await axios({
+    method: 'get',
+    url: `${jobUrl}api/json`,
+    headers: {
+      Authorization: auth
+    }
+  })
+
+  const runs = (mainJob.data as Job).runs
+
+  core.debug(`Runs: ${JSON.stringify(runs)}`)
+
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  const check = async (job: string) => {
+    return await axios({
+      method: 'get',
+      url: `${job}api/json`,
+      headers: {
+        Authorization: auth
+      }
+    })
+  }
+
+  let runCopy = runs.slice()
+
+  async function asyncFilter(
+    arr: Run[],
+    predicate: (run: Run) => Promise<boolean>
+  ): Promise<Run[]> {
+    const results = await Promise.all(arr.map(predicate))
+    return arr.filter((_v: Run, index: number) => results[index])
+  }
+
+  while (runCopy.length > 0) {
+    core.info(`Waiting for ${runCopy.length} jobs to finish ...`)
+    runCopy = await asyncFilter(runCopy, async (run: Run) => {
+      const checkResult = await check(run.url)
+      const jobData = checkResult.data as MatrixRun
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (jobData.building) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        core.info(`Job still building: ${checkResult.data.fullDisplayName}`)
+        return true
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        core.info(`Job finished: ${checkResult.data.fullDisplayName}`)
+        return false
+      }
+    })
+
+    await wait(1000)
+  }
+}
+
+async function waitForStarted(
+  queueLocation: string,
+  auth: string
+): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  const check = async () => {
+    return await axios({
+      method: 'get',
+      url: `${queueLocation}api/json`,
+      headers: {
+        Authorization: auth
+      }
+    })
+  }
+
+  core.info(`Waiting for job to start ...`)
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const checkResult = await check()
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (checkResult.data.executable) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      core.info(`Job started: ${checkResult.data.executable.url}`)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      return checkResult.data.executable.url as string
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (checkResult.data.cancelled) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      throw new Error(`Job was cancelled: ${inspect(checkResult)}`)
+    }
+
+    await wait(1000)
+  }
+}
+
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -20,6 +114,7 @@ export async function run(): Promise<void> {
     const jenkinsToken: string = core.getInput('jenkins-token')
 
     const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters`
+    const auth = `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
 
     const inputFiles = [
       { name: 'input_mac_7z', file: mac_in, paramName: 'input_mac_7z' },
@@ -56,7 +151,7 @@ export async function run(): Promise<void> {
       method: 'post',
       url: triggerUrl,
       headers: {
-        Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`,
+        Authorization: auth,
         ...form.getHeaders()
       },
       data: form
@@ -75,36 +170,13 @@ export async function run(): Promise<void> {
     }
 
     core.debug(`New Item at: ${triggerResult.headers.location}`)
-
-    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    const check = async () => {
-      return await axios({
-        method: 'get',
-        url: `${triggerResult.headers.location}api/json`,
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
-        }
-      })
-    }
-
-    core.info(`Waiting for job to start ...`)
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const checkResult = await check()
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (checkResult.data.executable) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        core.info(`Job started: ${checkResult.data.executable.url}`)
-        break
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (checkResult.data.cancelled) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        throw new Error(`Job was cancelled: ${inspect(checkResult)}`)
-      }
-
-      await wait(1000)
-    }
+    core.info('Waiting for job to start ...')
+    const jobUrl = await waitForStarted(
+      triggerResult.headers.location as unknown as string,
+      auth
+    )
+    core.info(`Waiting for job to finish ...`)
+    await waitForJobFinished(jobUrl, auth)
 
     // Set outputs for other workflow steps to use
     core.setOutput('macos', '')
@@ -112,6 +184,9 @@ export async function run(): Promise<void> {
     core.setOutput('win-arm64', '')
   } catch (error) {
     // Fail the workflow run if an error occurs
-    if (error instanceof Error) core.setFailed(error.message)
+
+    if (error instanceof Error) {
+      core.setFailed(error.message)
+    }
   }
 }

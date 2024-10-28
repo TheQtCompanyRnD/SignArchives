@@ -74,6 +74,55 @@ describe('action', () => {
     axiosAdapter
       .onGet('https://ci.com/queue/item/3708/api/json')
       .replyOnce(200, { cancelled: true })
+    axiosAdapter
+      .onGet('https://ci.com/job/Sign_archive/42/api/json')
+      .reply(200, {
+        building: false,
+        runs: [
+          {
+            number: 43,
+            url: 'https://ci.com/job/Sign_archive/cfg=macOS-clang-14-arm64/42/'
+          },
+          {
+            number: 43,
+            url: 'https://ci.com/job/Sign_archive/cfg=win-msvc2022-Windows11-22H2-arm64/42/'
+          },
+          {
+            number: 43,
+            url: 'https://ci.com/job/Sign_archive/cfg=win-msvc2022-Windows11-23H2-x64/42/'
+          }
+        ]
+      })
+    axiosAdapter
+      .onGet(
+        'https://ci.com/job/Sign_archive/cfg=macOS-clang-14-arm64/42/api/json'
+      )
+      .replyOnce(200, { building: true })
+    axiosAdapter
+      .onGet(
+        'https://ci.com/job/Sign_archive/cfg=win-msvc2022-Windows11-22H2-arm64/42/api/json'
+      )
+      .replyOnce(200, { building: true })
+    axiosAdapter
+      .onGet(
+        'https://ci.com/job/Sign_archive/cfg=win-msvc2022-Windows11-23H2-x64/42/api/json'
+      )
+      .replyOnce(200, { building: true })
+    axiosAdapter
+      .onGet(
+        'https://ci.com/job/Sign_archive/cfg=macOS-clang-14-arm64/42/api/json'
+      )
+      .replyOnce(200, { building: false })
+    axiosAdapter
+      .onGet(
+        'https://ci.com/job/Sign_archive/cfg=win-msvc2022-Windows11-22H2-arm64/42/api/json'
+      )
+      .replyOnce(200, { building: false })
+    axiosAdapter
+      .onGet(
+        'https://ci.com/job/Sign_archive/cfg=win-msvc2022-Windows11-23H2-x64/42/api/json'
+      )
+      .replyOnce(200, { building: false })
 
     await main.run()
     expect(runMock).toHaveReturned()

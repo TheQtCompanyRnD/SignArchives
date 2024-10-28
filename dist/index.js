@@ -29178,6 +29178,81 @@ const axios_1 = __importDefault(__nccwpck_require__(7269));
 const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
 const util_1 = __nccwpck_require__(9023); // or directly
+async function waitForJobFinished(jobUrl, auth) {
+    const mainJob = await (0, axios_1.default)({
+        method: 'get',
+        url: `${jobUrl}api/json`,
+        headers: {
+            Authorization: auth
+        }
+    });
+    const runs = mainJob.data.runs;
+    core.debug(`Runs: ${JSON.stringify(runs)}`);
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+    const check = async (job) => {
+        return await (0, axios_1.default)({
+            method: 'get',
+            url: `${job}api/json`,
+            headers: {
+                Authorization: auth
+            }
+        });
+    };
+    let runCopy = runs.slice();
+    async function asyncFilter(arr, predicate) {
+        const results = await Promise.all(arr.map(predicate));
+        return arr.filter((_v, index) => results[index]);
+    }
+    while (runCopy.length > 0) {
+        core.info(`Waiting for ${runCopy.length} jobs to finish ...`);
+        runCopy = await asyncFilter(runCopy, async (run) => {
+            const checkResult = await check(run.url);
+            const jobData = checkResult.data;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (jobData.building) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                core.info(`Job still building: ${checkResult.data.fullDisplayName}`);
+                return true;
+            }
+            else {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                core.info(`Job finished: ${checkResult.data.fullDisplayName}`);
+                return false;
+            }
+        });
+        await (0, wait_1.wait)(1000);
+    }
+}
+async function waitForStarted(queueLocation, auth) {
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+    const check = async () => {
+        return await (0, axios_1.default)({
+            method: 'get',
+            url: `${queueLocation}api/json`,
+            headers: {
+                Authorization: auth
+            }
+        });
+    };
+    core.info(`Waiting for job to start ...`);
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        const checkResult = await check();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (checkResult.data.executable) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            core.info(`Job started: ${checkResult.data.executable.url}`);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return checkResult.data.executable.url;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (checkResult.data.cancelled) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            throw new Error(`Job was cancelled: ${(0, util_1.inspect)(checkResult)}`);
+        }
+        await (0, wait_1.wait)(1000);
+    }
+}
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -29191,6 +29266,7 @@ async function run() {
         const jenkinsUser = core.getInput('jenkins-user');
         const jenkinsToken = core.getInput('jenkins-token');
         const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters`;
+        const auth = `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`;
         const inputFiles = [
             { name: 'input_mac_7z', file: mac_in, paramName: 'input_mac_7z' },
             {
@@ -29222,7 +29298,7 @@ async function run() {
             method: 'post',
             url: triggerUrl,
             headers: {
-                Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`,
+                Authorization: auth,
                 ...form.getHeaders()
             },
             data: form
@@ -29235,33 +29311,10 @@ async function run() {
             throw new Error(`Failed to get location of Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
         }
         core.debug(`New Item at: ${triggerResult.headers.location}`);
-        // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-        const check = async () => {
-            return await (0, axios_1.default)({
-                method: 'get',
-                url: `${triggerResult.headers.location}api/json`,
-                headers: {
-                    Authorization: `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
-                }
-            });
-        };
-        core.info(`Waiting for job to start ...`);
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-            const checkResult = await check();
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            if (checkResult.data.executable) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                core.info(`Job started: ${checkResult.data.executable.url}`);
-                break;
-            }
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            if (checkResult.data.cancelled) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                throw new Error(`Job was cancelled: ${(0, util_1.inspect)(checkResult)}`);
-            }
-            await (0, wait_1.wait)(1000);
-        }
+        core.info('Waiting for job to start ...');
+        const jobUrl = await waitForStarted(triggerResult.headers.location, auth);
+        core.info(`Waiting for job to finish ...`);
+        await waitForJobFinished(jobUrl, auth);
         // Set outputs for other workflow steps to use
         core.setOutput('macos', '');
         core.setOutput('win-x64', '');
@@ -29269,8 +29322,9 @@ async function run() {
     }
     catch (error) {
         // Fail the workflow run if an error occurs
-        if (error instanceof Error)
+        if (error instanceof Error) {
             core.setFailed(error.message);
+        }
     }
 }
 
