@@ -125,16 +125,16 @@ export async function run(): Promise<void> {
     const auth = `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
 
     const inputFiles = [
-      { name: 'input_mac_7z', file: mac_in, paramName: 'input_mac_7z' },
+      { name: 'input_mac.7z', file: mac_in, paramName: 'input_mac.7z' },
       {
-        name: 'input_windows_x64_7z',
+        name: 'input_windows_x64.7z',
         file: win_x64_in,
-        paramName: 'input_windows_x64_7z'
+        paramName: 'input_windows_x64.7z'
       },
       {
-        name: 'input_windows_arm64_7z',
+        name: 'input_windows_arm64.7z',
         file: win_arm64_in,
-        paramName: 'input_windows_arm64_7z'
+        paramName: 'input_windows_arm64.7z'
       }
     ].filter(file => file.file)
 
@@ -195,15 +195,15 @@ export async function run(): Promise<void> {
     // Set outputs for other workflow steps to use
     core.setOutput(
       'macos',
-      aritfacts.find(file => file.endsWith('output_mac_7z')) ?? ''
+      aritfacts.find(file => file.endsWith('output_mac.7z')) ?? ''
     )
     core.setOutput(
       'win-x64',
-      aritfacts.find(file => file.endsWith('output_windows_x64_7z')) ?? ''
+      aritfacts.find(file => file.endsWith('output_windows_x64.7z')) ?? ''
     )
     core.setOutput(
       'win-arm64',
-      aritfacts.find(file => file.endsWith('output_windows_arm64_7z')) ?? ''
+      aritfacts.find(file => file.endsWith('output_windows_arm64.7z')) ?? ''
     )
   } catch (error) {
     // Fail the workflow run if an error occurs
