@@ -41,10 +41,11 @@ async function downloadArtifacts(
         })
 
         const dest = fs.createWriteStream(artifact.fileName)
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         response.data.pipe(dest)
         await new Promise((resolve, reject) => {
-          dest.on('finish', resolve)
+          dest.on('finish', () => {
+            resolve(true)
+          })
           dest.on('error', reject)
         })
 
@@ -75,7 +76,6 @@ async function waitForStarted(
   queueLocation: string,
   auth: string
 ): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const check = async () => {
     return await axios({
       method: 'get',
@@ -87,20 +87,14 @@ async function waitForStarted(
   }
 
   core.info(`Waiting for job to start ...`)
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const checkResult = await check()
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (checkResult.data.executable) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       core.info(`Job started: ${checkResult.data.executable.url}`)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       return checkResult.data.executable.url as string
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (checkResult.data.cancelled) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       throw new Error(`Job was cancelled: ${inspect(checkResult)}`)
     }
 
