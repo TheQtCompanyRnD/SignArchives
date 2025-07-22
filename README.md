@@ -6,20 +6,20 @@
 [![CodeQL](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml)
 [![Coverage](./badges/coverage.svg)](./badges/coverage.svg)
 
-This is an Qt specific Github action to allow Github jobs to sign archives using
+This is an Qt specific GitHub Action to allow GitHub jobs to sign archives using
 our internal CI Infrastructure.
 
 ## Getting started
 
 You need to setup a Jenkins token for your Jenkins user via the Jenkins UI. This
-token will be used to authenticate the github action with Jenkins.
+token will be used to authenticate the GitHub Action with Jenkins.
 
 Go to your User settings -> Security -> API Token -> Add new token.
 
 Add the URL to the Jenkins server, your username and the token as secrets to
-your github repository.
+your GitHub repository.
 
-Then you can setup the github action like this:
+Then you can setup the GitHub Action like this:
 
 ```yaml
 - name: Sign archives
