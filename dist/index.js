@@ -30296,6 +30296,7 @@ const axios_1 = __importDefault(__nccwpck_require__(7269));
 const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
 const util_1 = __nccwpck_require__(9023); // or directly
+const crypto_1 = __nccwpck_require__(6982);
 async function fetchJob(jobUrl, auth) {
     return (await (0, axios_1.default)({
         method: 'get',
@@ -30380,7 +30381,7 @@ async function run() {
         const jenkinsUrl = core.getInput('jenkins-url');
         const jenkinsUser = core.getInput('jenkins-user');
         const jenkinsToken = core.getInput('jenkins-token');
-        const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters`;
+        const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters?BUILD_TYPE=Sign_Archive-${(0, crypto_1.randomInt)(10000)}`;
         const auth = `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`;
         const inputFiles = [
             { name: 'input_mac.7z', file: mac_in, paramName: 'input_mac.7z' },

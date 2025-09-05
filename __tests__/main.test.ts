@@ -51,15 +51,15 @@ describe('action', () => {
       }
     })
 
-    axiosAdapter
-      .onPost('https://ci.com/job/Sign_archive/buildWithParameters')
-      .reply(function (config) {
-        expect(config.url).toBe(
-          'https://ci.com/job/Sign_archive/buildWithParameters'
-        )
-        expect(config.headers?.Authorization).toBe('Basic dXNlcm5hbWU6MTIzNA==')
-        return [201, '', { location: 'https://ci.com/queue/item/3708/' }]
-      })
+    const buildUrlRe = new RegExp(
+      '^https://ci.com/job/Sign_archive/buildWithParameters\\?BUILD_TYPE=Sign_Archive-.*$'
+    )
+
+    axiosAdapter.onPost(buildUrlRe).reply(function (config) {
+      expect(config.url).toMatch(buildUrlRe)
+      expect(config.headers?.Authorization).toBe('Basic dXNlcm5hbWU6MTIzNA==')
+      return [201, '', { location: 'https://ci.com/queue/item/3708/' }]
+    })
     axiosAdapter
       .onGet('https://ci.com/queue/item/3708/api/json')
       .replyOnce(200, { why: 'Waiting ...' })

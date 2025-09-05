@@ -6,6 +6,7 @@ import FormData from 'form-data'
 import fs from 'fs'
 import { inspect } from 'util' // or directly
 import { Job } from './jenkins'
+import { randomInt } from 'crypto'
 
 async function fetchJob(jobUrl: string, auth: string): Promise<Job> {
   return (
@@ -115,7 +116,7 @@ export async function run(): Promise<void> {
     const jenkinsUser: string = core.getInput('jenkins-user')
     const jenkinsToken: string = core.getInput('jenkins-token')
 
-    const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters`
+    const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters?BUILD_TYPE=Sign_Archive-${randomInt(10000)}`
     const auth = `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`
 
     const inputFiles = [
