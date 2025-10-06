@@ -1,9 +1,8 @@
 # Sign archives
 
-[![GitHub Super-Linter](https://github.com/actions/typescript-action/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
-![CI](https://github.com/actions/typescript-action/actions/workflows/ci.yml/badge.svg)
-[![Check dist/](https://github.com/actions/typescript-action/actions/workflows/check-dist.yml/badge.svg)](https://github.com/actions/typescript-action/actions/workflows/check-dist.yml)
-[![CodeQL](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml)
+[![GitHub Super-Linter](https://github.com/TheQtCompanyRnD/SignArchives/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
+![CI](https://github.com/TheQtCompanyRnD/SignArchives/actions/workflows/ci.yml/badge.svg)
+[![Check dist/](https://github.com/TheQtCompanyRnD/SignArchives/actions/workflows/check-dist.yml/badge.svg)](https://github.com/TheQtCompanyRnD/SignArchives/actions/workflows/check-dist.yml)
 [![Coverage](./badges/coverage.svg)](./badges/coverage.svg)
 
 This is an Qt specific GitHub Action to allow GitHub jobs to sign archives using
