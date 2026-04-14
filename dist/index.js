@@ -30295,79 +30295,87 @@ const wait_1 = __nccwpck_require__(910);
 const axios_1 = __importDefault(__nccwpck_require__(7269));
 const form_data_1 = __importDefault(__nccwpck_require__(6454));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
-const util_1 = __nccwpck_require__(9023); // or directly
-const crypto_1 = __nccwpck_require__(6982);
-async function fetchJob(jobUrl, auth) {
-    return (await (0, axios_1.default)({
-        method: 'get',
-        url: `${jobUrl}api/json`,
+const path_1 = __importDefault(__nccwpck_require__(6928));
+function buildAuth(user, token) {
+    return `Basic ${Buffer.from(`${user}:${token}`).toString('base64')}`;
+}
+function apiUrl(baseUrl, endpoint) {
+    return baseUrl.replace(/\/?$/, '/') + endpoint;
+}
+function bufferToString(data) {
+    if (Buffer.isBuffer(data))
+        return data.toString('utf-8');
+    if (typeof data === 'string')
+        return data;
+    return JSON.stringify(data);
+}
+async function uploadFile(baseUrl, auth, filePath, targetPlatform) {
+    const form = new form_data_1.default();
+    form.append('file', fs_1.default.createReadStream(filePath));
+    form.append('target_platform', targetPlatform);
+    core.debug(`Uploading ${filePath} to ${baseUrl} for ${targetPlatform} signing`);
+    const response = await (0, axios_1.default)({
+        method: 'post',
+        url: apiUrl(baseUrl, 'api/sign/upload'),
         headers: {
-            Authorization: auth
-        }
-    })).data;
+            Authorization: auth,
+            ...form.getHeaders()
+        },
+        data: form,
+        validateStatus: status => [200, 201].includes(status)
+    });
+    const result = response.data;
+    core.info(`Uploaded ${path_1.default.basename(filePath)}, request ID: ${result.request_id}`);
+    return result.request_id;
 }
-async function downloadArtifacts(jobUrl, auth) {
-    const job = await fetchJob(jobUrl, auth);
-    const result = [];
-    for (const run of job.runs) {
-        const runData = await fetchJob(run.url, auth);
-        if (runData.result == 'SUCCESS' && runData.artifacts) {
-            for (const artifact of runData.artifacts) {
-                const artifactUrl = `${run.url}artifact/${artifact.relativePath}`;
-                const response = await (0, axios_1.default)({
-                    method: 'get',
-                    url: artifactUrl,
-                    headers: {
-                        Authorization: auth
-                    },
-                    responseType: 'stream'
-                });
-                const dest = fs_1.default.createWriteStream(artifact.fileName);
-                response.data.pipe(dest);
-                await new Promise((resolve, reject) => {
-                    dest.on('finish', () => {
-                        resolve(true);
-                    });
-                    dest.on('error', reject);
-                });
-                core.info(`Downloaded artifact: ${dest.path}`);
-                result.push(dest.path);
-            }
-        }
-    }
-    return result;
-}
-async function waitForJobFinished(jobUrl, auth) {
-    let mainJob = await fetchJob(jobUrl, auth);
-    while (mainJob.inProgress) {
-        await (0, wait_1.wait)(1000);
-        mainJob = await fetchJob(jobUrl, auth);
-    }
-    core.info(`Job finished with: ${mainJob.result}`);
-    return mainJob.result == 'SUCCESS';
-}
-async function waitForStarted(queueLocation, auth) {
-    const check = async () => {
-        return await (0, axios_1.default)({
-            method: 'get',
-            url: `${queueLocation}api/json`,
-            headers: {
-                Authorization: auth
-            }
-        });
-    };
-    core.info(`Waiting for job to start ...`);
+async function pollForSignedFile(baseUrl, auth, requestId, outputPath) {
+    const url = apiUrl(baseUrl, `api/sign/${requestId}`);
+    core.info(`Polling for signed file (request: ${requestId}) ...`);
     while (true) {
-        const checkResult = await check();
-        if (checkResult.data.executable) {
-            core.info(`Job started: ${checkResult.data.executable.url}`);
-            return checkResult.data.executable.url;
+        const response = await (0, axios_1.default)({
+            method: 'get',
+            url,
+            headers: { Authorization: auth },
+            responseType: 'arraybuffer',
+            validateStatus: () => true,
+            timeout: 10 * 60 * 1000
+        });
+        if (response.status === 200) {
+            await fs_1.default.promises.writeFile(outputPath, response.data);
+            core.info(`Signed file saved to: ${outputPath}`);
+            return outputPath;
         }
-        if (checkResult.data.cancelled) {
-            throw new Error(`Job was cancelled: ${(0, util_1.inspect)(checkResult)}`);
+        const body = bufferToString(response.data);
+        if (response.status === 202) {
+            try {
+                const data = JSON.parse(body);
+                core.info(`Signing status: ${data.message ?? body}`);
+            }
+            catch {
+                core.info(`Signing in progress ...`);
+            }
+            await (0, wait_1.wait)(5000);
+            continue;
         }
-        await (0, wait_1.wait)(1000);
+        if (response.status === 410) {
+            throw new Error(`Signed file expired for request ${requestId}`);
+        }
+        if (response.status === 422) {
+            let message = body;
+            try {
+                message = JSON.parse(body).message ?? body;
+            }
+            catch {
+                /* use raw body */
+            }
+            throw new Error(`Signing failed for request ${requestId}: ${message}`);
+        }
+        throw new Error(`Unexpected status ${response.status} for request ${requestId}: ${body}`);
     }
+}
+async function signFile(baseUrl, auth, inputPath, outputPath, targetPlatform) {
+    const requestId = await uploadFile(baseUrl, auth, inputPath, targetPlatform);
+    return pollForSignedFile(baseUrl, auth, requestId, outputPath);
 }
 /**
  * The main function for the action.
@@ -30375,75 +30383,39 @@ async function waitForStarted(queueLocation, auth) {
  */
 async function run() {
     try {
-        const mac_in = core.getInput('macos');
-        const win_x64_in = core.getInput('win-x64');
-        const win_arm64_in = core.getInput('win-arm64');
-        const jenkinsUrl = core.getInput('jenkins-url');
-        const jenkinsUser = core.getInput('jenkins-user');
-        const jenkinsToken = core.getInput('jenkins-token');
-        const triggerUrl = `${jenkinsUrl}/job/Sign_archive/buildWithParameters?BUILD_TYPE=Sign_Archive-${(0, crypto_1.randomInt)(10000)}`;
-        const auth = `Basic ${Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64')}`;
-        const inputFiles = [
-            { name: 'input_mac.7z', file: mac_in, paramName: 'input_mac.7z' },
-            {
-                name: 'input_windows_x64.7z',
-                file: win_x64_in,
-                paramName: 'input_windows_x64.7z'
-            },
-            {
-                name: 'input_windows_arm64.7z',
-                file: win_arm64_in,
-                paramName: 'input_windows_arm64.7z'
-            }
-        ].filter(file => file.file);
-        const form = new form_data_1.default();
-        const params = {
-            parameters: inputFiles.map(file => {
-                return { name: file.name, file: file.paramName };
-            })
-        };
-        inputFiles.forEach(file => {
-            form.append(file.paramName, fs_1.default.createReadStream(file.file));
-        });
-        form.append('json', JSON.stringify(params));
-        // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-        core.debug(`Sending request ...`);
-        core.debug(`Parameters: ${(0, util_1.inspect)(params)}`);
-        core.debug(`Files: ${inputFiles.map(file => file.file).join(', ')}`);
-        const config = {
-            method: 'post',
-            url: triggerUrl,
-            headers: {
-                Authorization: auth,
-                ...form.getHeaders()
-            },
-            data: form
-        };
-        const triggerResult = await (0, axios_1.default)(config);
-        if (triggerResult.status !== 201) {
-            throw new Error(`Failed to trigger Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
+        const macInput = core.getInput('macos');
+        const winX64Input = core.getInput('win-x64');
+        const winArm64Input = core.getInput('win-arm64');
+        const macServer = core.getInput('mac-signing-server');
+        const winServer = core.getInput('win-signing-server');
+        const macAuth = buildAuth(core.getInput('mac-signing-user'), core.getInput('mac-signing-token'));
+        const winAuth = buildAuth(core.getInput('win-signing-user'), core.getInput('win-signing-token'));
+        const tasks = [];
+        if (macInput) {
+            const outputPath = `signed_${path_1.default.basename(macInput)}`;
+            tasks.push(signFile(macServer, macAuth, macInput, outputPath, 'macOS').then(signed => core.setOutput('macos', signed)));
         }
-        if (!triggerResult.headers.location) {
-            throw new Error(`Failed to get location of Jenkins job: ${(0, util_1.inspect)(triggerResult)}`);
+        else {
+            core.setOutput('macos', '');
         }
-        core.debug(`New Item at: ${triggerResult.headers.location}`);
-        const jobUrl = await waitForStarted(triggerResult.headers.location, auth);
-        core.info(`Waiting for job to finish ...`);
-        const success = await waitForJobFinished(jobUrl, auth);
-        if (!success) {
-            throw new Error(`Job failed: ${jobUrl}`);
+        if (winX64Input) {
+            const outputPath = `signed_${path_1.default.basename(winX64Input)}`;
+            tasks.push(signFile(winServer, winAuth, winX64Input, outputPath, 'Windows').then(signed => core.setOutput('win-x64', signed)));
         }
-        const aritfacts = await downloadArtifacts(jobUrl, auth);
-        core.debug(`Artifacts: ${aritfacts.join(', ')}`);
-        // Set outputs for other workflow steps to use
-        core.setOutput('macos', aritfacts.find(file => file.endsWith('output_mac.7z')) ?? '');
-        core.setOutput('win-x64', aritfacts.find(file => file.endsWith('output_windows_x64.7z')) ?? '');
-        core.setOutput('win-arm64', aritfacts.find(file => file.endsWith('output_windows_arm64.7z')) ?? '');
+        else {
+            core.setOutput('win-x64', '');
+        }
+        if (winArm64Input) {
+            const outputPath = `signed_${path_1.default.basename(winArm64Input)}`;
+            tasks.push(signFile(winServer, winAuth, winArm64Input, outputPath, 'Windows').then(signed => core.setOutput('win-arm64', signed)));
+        }
+        else {
+            core.setOutput('win-arm64', '');
+        }
+        await Promise.all(tasks);
     }
     catch (error) {
-        // Fail the workflow run if an error occurs
         if (error instanceof Error) {
-            console.log(JSON.stringify(error));
             core.setFailed(error.message);
         }
     }

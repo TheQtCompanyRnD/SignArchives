@@ -21,17 +21,29 @@ inputs:
     description: 'Path to Windows arm64 archive'
     required: false
     default: ''
-  jenkins-url:
-    description: Url to jenkins
-    required: true
+  mac-signing-server:
+    description: 'Base URL of the macOS signing server'
+    required: false
     default: ''
-  jenkins-user:
-    description: 'Username for jenkins'
-    required: true
+  win-signing-server:
+    description: 'Base URL of the Windows signing server'
+    required: false
     default: ''
-  jenkins-token:
-    description: 'API Token for jenkins'
-    required: true
+  mac-signing-user:
+    description: 'Username for the macOS signing server'
+    required: false
+    default: ''
+  mac-signing-token:
+    description: 'Password for the macOS signing server'
+    required: false
+    default: ''
+  win-signing-user:
+    description: 'Username for the Windows signing server'
+    required: false
+    default: ''
+  win-signing-token:
+    description: 'Password for the Windows signing server'
+    required: false
     default: ''
 
 # Define your outputs here.

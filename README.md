@@ -5,38 +5,52 @@
 [![Check dist/](https://github.com/TheQtCompanyRnD/SignArchives/actions/workflows/check-dist.yml/badge.svg)](https://github.com/TheQtCompanyRnD/SignArchives/actions/workflows/check-dist.yml)
 [![Coverage](./badges/coverage.svg)](./badges/coverage.svg)
 
-This is an Qt specific GitHub Action to allow GitHub jobs to sign archives using
-our internal CI Infrastructure.
+This is a Qt specific GitHub Action to sign archives using the internal signing
+server REST API.
 
 ## Getting started
 
-You need to setup a Jenkins token for your Jenkins user via the Jenkins UI. This
-token will be used to authenticate the GitHub Action with Jenkins.
+Request access to the signing server by contacting @Jukka Jokiniva. Provide:
 
-Go to your User settings -> Security -> API Token -> Add new token.
+- Which environment you need (test/production)
+- Which platforms (macOS/Windows)
+- Your use case and integration details (CI/CD pipeline)
 
-Add the URL to the Jenkins server, your username and the token as secrets to
-your GitHub repository.
-
-Then you can setup the GitHub Action like this:
+Once you have credentials, add them as secrets to your GitHub repository. Note:
+macOS and Windows servers use separate credentials.
 
 ```yaml
 - name: Sign archives
-  uses: TheQtCompanyRnD/SignArchives@v1.1
+  uses: TheQtCompanyRnD/SignArchives@v2
   with:
     macos: 'path/to/macos/archive.7z'
     win-x64: 'path/to/windows/x64/archive.7z'
     win-arm64: 'path/to/windows/arm64/archive.7z'
-    jenkins-url: ${{ secrets.JENKINS_URL }}
-    jenkins-user: ${{ secrets.JENKINS_USER }}
-    jenkins-token: ${{ secrets.JENKINS_TOKEN }}
+    mac-signing-server: 'https://signingservermac.ci.qt.io/'
+    mac-signing-user: ${{ secrets.MAC_SIGNING_USER }}
+    mac-signing-token: ${{ secrets.MAC_SIGNING_TOKEN }}
+    win-signing-server: 'https://signingserverwin.ci.qt.io/'
+    win-signing-user: ${{ secrets.WIN_SIGNING_USER }}
+    win-signing-token: ${{ secrets.WIN_SIGNING_TOKEN }}
 ```
+
+You only need to supply server credentials for the platforms you are signing.
 
 ## Outputs
 
-You can get the path to the signed archives via the outputs:
+The signed archives are written alongside the originals with a `signed_` prefix.
+Access the paths via outputs:
 
 ```yaml
+- name: Sign archives
+  id: sign
+  uses: TheQtCompanyRnD/SignArchives@v2
+  with:
+    macos: 'path/to/macos/archive.7z'
+    mac-signing-server: 'https://signingservermac.ci.qt.io/'
+    mac-signing-user: ${{ secrets.MAC_SIGNING_USER }}
+    mac-signing-token: ${{ secrets.MAC_SIGNING_TOKEN }}
+
 - name: Print outputs
   run: |
     echo "macos: ${{ steps.sign.outputs.macos }}"
