@@ -50,7 +50,11 @@ describe('action', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    axiosAdapter = new MockAdapter(axios)
+    // axios-mock-adapter is typed against axios' CommonJS declarations while
+    // this file imports the ESM ones; both describe the same runtime object.
+    axiosAdapter = new MockAdapter(
+      axios as unknown as ConstructorParameters<typeof MockAdapter>[0]
+    )
   })
 
   afterEach(() => {
