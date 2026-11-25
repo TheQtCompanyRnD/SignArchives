@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 
-import { wait } from './wait'
+import { wait } from './wait.js'
 import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'

@@ -25,23 +25,26 @@
   },
   "scripts": {
     "bundle": "npm run format:write && npm run package",
-    "ci-test": "npx jest",
+    "ci-test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
     "coverage": "npx make-coverage-badge --output-path ./badges/coverage.svg",
     "format:write": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "lint": "npx eslint . -c ./.github/linters/eslint.config.mjs",
     "local-action": "npx local-action . src/main.ts .env",
-    "package": "npx ncc build src/index.ts -o dist --source-map --license licenses.txt",
-    "package:watch": "npm run package -- --watch",
-    "test": "npx jest",
+    "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
+    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
     "all": "npm run format:write && npm run lint && npm run test && npm run coverage && npm run package"
   },
   "license": "MIT",
+  "type": "module",
   "jest": {
-    "preset": "ts-jest",
+    "preset": "ts-jest/presets/default-esm",
     "verbose": true,
     "clearMocks": true,
     "testEnvironment": "node",
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
     "moduleFileExtensions": [
       "js",
       "ts"
@@ -53,8 +56,16 @@
       "/node_modules/",
       "/dist/"
     ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.+)\\.js$": "$1"
+    },
     "transform": {
-      "^.+\\.ts$": "ts-jest"
+      "^.+\\.ts$": [
+        "ts-jest",
+        {
+          "useESM": true
+        }
+      ]
     },
     "coverageReporters": [
       "json-summary",
@@ -67,17 +78,21 @@
     ]
   },
   "dependencies": {
-    "@actions/core": "^1.11.1",
-    "axios": "^1.12.2"
+    "@actions/core": "^3.0.0",
+    "axios": "^1.12.2",
+    "form-data": "^4.0.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
     "@jest/globals": "^29.7.0",
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^24.0.3",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
-    "@vercel/ncc": "^0.38.3",
     "axios-mock-adapter": "^2.1.0",
     "eslint": "^9.27.0",
     "eslint-plugin-github": "^6.0.0",
@@ -90,7 +105,9 @@
     "make-coverage-badge": "^1.2.0",
     "prettier": "^3.5.3",
     "prettier-eslint": "^16.4.2",
+    "rollup": "^4.68.8",
     "ts-jest": "^29.3.4",
+    "tslib": "^2.9.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1"
   }

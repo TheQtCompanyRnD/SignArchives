@@ -6,39 +6,55 @@
  * variables following the pattern `INPUT_<INPUT_NAME>`.
  */
 
-import * as core from '@actions/core'
-import * as main from '../src/main'
-import axios from 'axios'
-import MockAdapter from 'axios-mock-adapter'
-import fs from 'fs'
+import {
+  jest,
+  describe,
+  it,
+  beforeEach,
+  afterEach,
+  expect
+} from '@jest/globals'
 
-jest.mock('../src/wait', () => ({ wait: jest.fn().mockResolvedValue('done!') }))
+// Set up mocks BEFORE any dynamic imports — jest.unstable_mockModule must
+// precede the imports that depend on these modules.
 
-// Mock the action's main function
-const runMock = jest.spyOn(main, 'run')
+const getInputMock = jest.fn<(name: string) => string>()
+const setFailedMock = jest.fn<(message: string | Error) => void>()
+const setOutputMock = jest.fn<(name: string, value: unknown) => void>()
+const infoMock = jest.fn<(message: string) => void>()
+const debugMock = jest.fn<(message: string) => void>()
 
-// Mock the GitHub Actions core library
-let getInputMock: jest.SpiedFunction<typeof core.getInput>
-let setFailedMock: jest.SpiedFunction<typeof core.setFailed>
-let setOutputMock: jest.SpiedFunction<typeof core.setOutput>
-let axiosAdapter: MockAdapter
+jest.unstable_mockModule('@actions/core', () => ({
+  getInput: getInputMock,
+  setFailed: setFailedMock,
+  setOutput: setOutputMock,
+  info: infoMock,
+  debug: debugMock
+}))
+
+jest.unstable_mockModule('../src/wait.js', () => ({
+  wait: jest.fn<() => Promise<string>>().mockResolvedValue('done!')
+}))
+
+// Dynamic imports must come AFTER unstable_mockModule registrations
+const { run } = await import('../src/main.js')
+const { default: axios } = await import('axios')
+const { default: MockAdapter } = await import('axios-mock-adapter')
+const { default: fs } = await import('fs')
 
 const MAC_SERVER = 'https://signingservermac.ci.qt.io/'
 const WIN_SERVER = 'https://signingserverwin.ci.qt.io/'
 
 describe('action', () => {
+  let axiosAdapter: InstanceType<typeof MockAdapter>
+
   beforeEach(() => {
     jest.clearAllMocks()
-
-    getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
-    setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
-    setOutputMock = jest.spyOn(core, 'setOutput').mockImplementation()
     axiosAdapter = new MockAdapter(axios)
   })
 
   afterEach(() => {
     axiosAdapter.restore()
-    // Clean up any signed files created during tests
     for (const f of [
       'signed_test-macos.7z',
       'signed_test-winx64.7z',
@@ -67,7 +83,6 @@ describe('action', () => {
     axiosAdapter
       .onPost(`${MAC_SERVER}api/sign/upload`)
       .reply(201, { request_id: 'abc-mac-123' })
-
     axiosAdapter
       .onGet(`${MAC_SERVER}api/sign/abc-mac-123`)
       .replyOnce(202, { message: 'Request is pending' })
@@ -75,9 +90,8 @@ describe('action', () => {
       .onGet(`${MAC_SERVER}api/sign/abc-mac-123`)
       .replyOnce(200, Buffer.from('signed-mac-content'))
 
-    await main.run()
+    await run()
 
-    expect(runMock).toHaveReturned()
     expect(setFailedMock).not.toHaveBeenCalled()
     expect(setOutputMock).toHaveBeenCalledWith('macos', 'signed_test-macos.7z')
     expect(setOutputMock).toHaveBeenCalledWith('win-x64', '')
@@ -108,7 +122,6 @@ describe('action', () => {
     axiosAdapter
       .onPost(`${WIN_SERVER}api/sign/upload`)
       .replyOnce(201, { request_id: 'req-arm64' })
-
     axiosAdapter
       .onGet(`${WIN_SERVER}api/sign/req-x64`)
       .reply(200, Buffer.from('signed-x64-content'))
@@ -116,9 +129,8 @@ describe('action', () => {
       .onGet(`${WIN_SERVER}api/sign/req-arm64`)
       .reply(200, Buffer.from('signed-arm64-content'))
 
-    await main.run()
+    await run()
 
-    expect(runMock).toHaveReturned()
     expect(setFailedMock).not.toHaveBeenCalled()
     expect(setOutputMock).toHaveBeenCalledWith('macos', '')
     expect(setOutputMock).toHaveBeenCalledWith(
@@ -154,9 +166,8 @@ describe('action', () => {
       .onGet(`${MAC_SERVER}api/sign/fail-req`)
       .reply(422, { message: 'Unsupported file format' })
 
-    await main.run()
+    await run()
 
-    expect(runMock).toHaveReturned()
     expect(setFailedMock).toHaveBeenCalledWith(
       expect.stringContaining('Signing failed')
     )
@@ -183,9 +194,8 @@ describe('action', () => {
       .reply(201, { request_id: 'expired-req' })
     axiosAdapter.onGet(`${MAC_SERVER}api/sign/expired-req`).reply(410, '')
 
-    await main.run()
+    await run()
 
-    expect(runMock).toHaveReturned()
     expect(setFailedMock).toHaveBeenCalledWith(
       expect.stringContaining('expired')
     )
