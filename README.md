@@ -26,10 +26,10 @@ macOS and Windows servers use separate credentials.
     macos: 'path/to/macos/archive.7z'
     win-x64: 'path/to/windows/x64/archive.7z'
     win-arm64: 'path/to/windows/arm64/archive.7z'
-    mac-signing-server: 'https://signingservermac.ci.qt.io/'
+    mac-signing-server: 'https://signingserver-mac.ci.qt.io/'
     mac-signing-user: ${{ secrets.MAC_SIGNING_USER }}
     mac-signing-token: ${{ secrets.MAC_SIGNING_TOKEN }}
-    win-signing-server: 'https://signingserverwin.ci.qt.io/'
+    win-signing-server: 'https://signingserver-win.ci.qt.io/'
     win-signing-user: ${{ secrets.WIN_SIGNING_USER }}
     win-signing-token: ${{ secrets.WIN_SIGNING_TOKEN }}
 ```
@@ -38,8 +38,9 @@ You only need to supply server credentials for the platforms you are signing.
 
 ## Outputs
 
-The signed archives are written alongside the originals with a `signed_` prefix.
-Access the paths via outputs:
+The signed archives are written to the working directory with a `signed_` prefix
+(for example `archive.7z` becomes `./signed_archive.7z`). Access the paths via
+outputs:
 
 ```yaml
 - name: Sign archives
@@ -47,7 +48,7 @@ Access the paths via outputs:
   uses: TheQtCompanyRnD/SignArchives@v2
   with:
     macos: 'path/to/macos/archive.7z'
-    mac-signing-server: 'https://signingservermac.ci.qt.io/'
+    mac-signing-server: 'https://signingserver-mac.ci.qt.io/'
     mac-signing-user: ${{ secrets.MAC_SIGNING_USER }}
     mac-signing-token: ${{ secrets.MAC_SIGNING_TOKEN }}
 
